@@ -126,6 +126,7 @@ const initSearchUI = () => {
       const regex = searchOptions.useRegex 
         ? new RegExp(term, flags)
         : new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+      
       const textNodes = [];
       const walker = document.createTreeWalker(
         document.body,
@@ -142,32 +143,50 @@ const initSearchUI = () => {
       }
 
       searchState.matches = [];
+      
+      // 为每个文本节点收集匹配信息
+      const allMatches = [];
       textNodes.forEach(textNode => {
         const text = textNode.textContent;
+        const nodeMatches = [];
         let match;
-        while ((match = regex.exec(text)) !== null) {
-          // 确保匹配位置在文本节点范围内
-          if (match.index >= 0 && match.index + match[0].length <= text.length) {
-            const span = document.createElement('span');
-            span.className = 'better-search-highlight';
-            span.textContent = match[0];
-            
-            try {
-              const range = document.createRange();
-              range.setStart(textNode, match.index);
-              range.setEnd(textNode, match.index + match[0].length);
-              range.surroundContents(span);
-              searchState.matches.push(span);
-            } catch (e) {
-              console.warn('无法高亮文本:', e);
-              // 跳过这个匹配，继续处理其他匹配
-              continue;
-            }
-          }
-        }
-        // 重置正则表达式的 lastIndex
+        
         regex.lastIndex = 0;
+        while ((match = regex.exec(text)) !== null) {
+          nodeMatches.push({
+            node: textNode,
+            index: match.index,
+            length: match[0].length,
+            text: match[0]
+          });
+        }
+        
+        if (nodeMatches.length > 0) {
+          allMatches.push(...nodeMatches);
+        }
       });
+
+      // 从后向前处理匹配项
+      for (let i = allMatches.length - 1; i >= 0; i--) {
+        const match = allMatches[i];
+        try {
+          const span = document.createElement('span');
+          span.className = 'better-search-highlight';
+          span.textContent = match.text;
+          
+          const range = document.createRange();
+          range.setStart(match.node, match.index);
+          range.setEnd(match.node, match.index + match.length);
+          range.surroundContents(span);
+          
+          // 将新创建的span添加到匹配数组的开头
+          // 这样保持匹配项的原始顺序
+          searchState.matches.unshift(span);
+        } catch (e) {
+          console.warn('无法高亮文本:', e);
+          continue;
+        }
+      }
 
       searchState.currentIndex = searchState.matches.length > 0 ? 0 : -1;
       updateCount();
