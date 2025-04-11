@@ -55,6 +55,10 @@
   color: #666;
 }
 
+.search-options button:focus {
+  outline: none;
+}
+
 .search-options button:hover {
   background: #e0e0e0;
 }
@@ -89,6 +93,10 @@
   align-items: center;
   justify-content: center;
   color: #666;
+}
+
+.search-controls button:focus {
+  outline: none;
 }
 
 .search-controls button:hover {
