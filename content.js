@@ -77,6 +77,8 @@ const initSearchUI = () => {
     container.style.display = 'block';
     input.focus();
     searchState.isActive = true;
+    // 初始化时更新导航按钮状态
+    updateNavigationButtons();
   };
 
   // 隐藏搜索框
@@ -94,6 +96,21 @@ const initSearchUI = () => {
       const parent = el.parentNode;
       parent.replaceChild(document.createTextNode(el.textContent), el);
     });
+    // 清空匹配结果数组
+    searchState.matches = [];
+    searchState.currentIndex = 0;
+    // 更新按钮状态
+    updateNavigationButtons();
+  };
+
+  // 添加按钮状态更新函数
+  const updateNavigationButtons = () => {
+    const hasMatches = searchState.matches.length > 0;
+    prevBtn.disabled = !hasMatches;
+    nextBtn.disabled = !hasMatches;
+    // 可选：添加视觉反馈的样式
+    prevBtn.classList.toggle('disabled', !hasMatches);
+    nextBtn.classList.toggle('disabled', !hasMatches);
   };
 
   // 执行搜索
@@ -152,8 +169,9 @@ const initSearchUI = () => {
         regex.lastIndex = 0;
       });
 
-      searchState.currentIndex = 0;
+      searchState.currentIndex = searchState.matches.length > 0 ? 0 : -1;
       updateCount();
+      updateNavigationButtons();
       highlightCurrent();
     } catch (e) {
       console.error('搜索错误:', e);

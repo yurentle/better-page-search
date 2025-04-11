@@ -121,4 +121,14 @@
 .better-search-highlight.current {
   background-color: #ffcc00;
   font-weight: bold;
+}
+
+.search-controls button.disabled {
+  opacity: 0.5;
+  /* cursor: not-allowed; */
+  background: #f0f0f0;
+}
+
+.search-controls button.disabled:hover {
+  background: #f0f0f0;
 } 
