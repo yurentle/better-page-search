@@ -1,0 +1,233 @@
+// 搜索状态管理
+let searchState = {
+  isActive: false,
+  currentIndex: 0,
+  matches: [],
+  searchTerm: ''
+};
+
+// 创建搜索UI容器
+const createSearchUI = () => {
+  const container = document.createElement('div');
+  container.id = 'better-search-container';
+  container.innerHTML = `
+    <div class="better-search-box">
+      <div class="search-input-wrapper">
+        <input type="text" id="better-search-input" placeholder="Find" />
+        <div class="search-options">
+          <button id="match-case" title="Match case">Aa</button>
+          <button id="use-regex" title="Use Regular Expression">.*</button>
+        </div>
+      </div>
+      <div class="search-controls">
+        <span id="better-search-count">0/0</span>
+        <button id="better-search-prev" title="Previous">↑</button>
+        <button id="better-search-next" title="Next">↓</button>
+        <button id="better-search-close" title="Close">×</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(container);
+  return container;
+};
+
+// 初始化搜索UI
+const initSearchUI = () => {
+  const container = createSearchUI();
+  const input = container.querySelector('#better-search-input');
+  const prevBtn = container.querySelector('#better-search-prev');
+  const nextBtn = container.querySelector('#better-search-next');
+  const closeBtn = container.querySelector('#better-search-close');
+  const countSpan = container.querySelector('#better-search-count');
+  const matchCaseBtn = container.querySelector('#match-case');
+  const useRegexBtn = container.querySelector('#use-regex');
+
+  // 搜索选项状态
+  const searchOptions = {
+    matchCase: false,
+    useRegex: false
+  };
+
+  // 更新搜索选项按钮状态
+  const updateOptionButtons = () => {
+    matchCaseBtn.classList.toggle('active', searchOptions.matchCase);
+    useRegexBtn.classList.toggle('active', searchOptions.useRegex);
+  };
+
+  // 切换大小写匹配
+  matchCaseBtn.addEventListener('click', () => {
+    searchOptions.matchCase = !searchOptions.matchCase;
+    updateOptionButtons();
+    if (searchState.searchTerm) {
+      performSearch(searchState.searchTerm);
+    }
+  });
+
+  // 切换正则表达式
+  useRegexBtn.addEventListener('click', () => {
+    searchOptions.useRegex = !searchOptions.useRegex;
+    updateOptionButtons();
+    if (searchState.searchTerm) {
+      performSearch(searchState.searchTerm);
+    }
+  });
+
+  // 显示搜索框
+  const showSearch = () => {
+    container.style.display = 'block';
+    input.focus();
+    searchState.isActive = true;
+  };
+
+  // 隐藏搜索框
+  const hideSearch = () => {
+    container.style.display = 'none';
+    clearHighlights();
+    searchState.isActive = false;
+    searchState.matches = [];
+    searchState.currentIndex = 0;
+  };
+
+  // 清除高亮
+  const clearHighlights = () => {
+    document.querySelectorAll('.better-search-highlight').forEach(el => {
+      const parent = el.parentNode;
+      parent.replaceChild(document.createTextNode(el.textContent), el);
+    });
+  };
+
+  // 执行搜索
+  const performSearch = (term) => {
+    clearHighlights();
+    if (!term) {
+      countSpan.textContent = '0/0';
+      return;
+    }
+
+    try {
+      const flags = searchOptions.matchCase ? 'g' : 'gi';
+      const regex = searchOptions.useRegex 
+        ? new RegExp(term, flags)
+        : new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+      const textNodes = [];
+      const walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+
+      let node;
+      while (node = walker.nextNode()) {
+        if (node.textContent.trim()) {
+          textNodes.push(node);
+        }
+      }
+
+      searchState.matches = [];
+      textNodes.forEach(textNode => {
+        const text = textNode.textContent;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+          // 确保匹配位置在文本节点范围内
+          if (match.index >= 0 && match.index + match[0].length <= text.length) {
+            const span = document.createElement('span');
+            span.className = 'better-search-highlight';
+            span.textContent = match[0];
+            
+            try {
+              const range = document.createRange();
+              range.setStart(textNode, match.index);
+              range.setEnd(textNode, match.index + match[0].length);
+              range.surroundContents(span);
+              searchState.matches.push(span);
+            } catch (e) {
+              console.warn('无法高亮文本:', e);
+              // 跳过这个匹配，继续处理其他匹配
+              continue;
+            }
+          }
+        }
+        // 重置正则表达式的 lastIndex
+        regex.lastIndex = 0;
+      });
+
+      searchState.currentIndex = 0;
+      updateCount();
+      highlightCurrent();
+    } catch (e) {
+      console.error('搜索错误:', e);
+      countSpan.textContent = '无效的正则表达式';
+    }
+  };
+
+  // 更新计数显示
+  const updateCount = () => {
+    const countText = `${searchState.matches.length ? searchState.currentIndex + 1 : 0}/${searchState.matches.length}`;
+    countSpan.textContent = countText;
+  };
+
+  // 高亮当前匹配项
+  const highlightCurrent = () => {
+    document.querySelectorAll('.better-search-highlight').forEach(el => {
+      el.classList.remove('current');
+    });
+    if (searchState.matches[searchState.currentIndex]) {
+      searchState.matches[searchState.currentIndex].classList.add('current');
+      searchState.matches[searchState.currentIndex].scrollIntoView({
+        block: 'center'
+      });
+    }
+  };
+
+  // 事件监听
+  input.addEventListener('input', (e) => {
+    searchState.searchTerm = e.target.value;
+    performSearch(e.target.value);
+  });
+
+  prevBtn.addEventListener('click', () => {
+    if (searchState.matches.length) {
+      searchState.currentIndex = (searchState.currentIndex - 1 + searchState.matches.length) % searchState.matches.length;
+      updateCount();
+      highlightCurrent();
+    }
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (searchState.matches.length) {
+      searchState.currentIndex = (searchState.currentIndex + 1) % searchState.matches.length;
+      updateCount();
+      highlightCurrent();
+    }
+  });
+
+  closeBtn.addEventListener('click', hideSearch);
+
+  // 快捷键处理
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
+      showSearch();
+    } else if (e.key === 'Escape' && searchState.isActive) {
+      e.preventDefault();
+      hideSearch();
+    } else if (searchState.isActive) {
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        prevBtn.click();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        nextBtn.click();
+      }
+    }
+  });
+
+  return {
+    showSearch,
+    hideSearch
+  };
+};
+
+// 初始化
+const searchUI = initSearchUI(); 
