@@ -199,9 +199,28 @@ const initSearchUI = () => {
   };
 
   // 事件监听
-  input.addEventListener('input', (e) => {
+  let isComposing = false; // 添加输入法编辑状态标记
+
+  // 处理输入法编辑开始
+  input.addEventListener('compositionstart', () => {
+    isComposing = true;
+  });
+
+  // 处理输入法编辑结束
+  input.addEventListener('compositionend', (e) => {
+    isComposing = false;
+    // 在输入法编辑结束时执行搜索
     searchState.searchTerm = e.target.value;
     performSearch(e.target.value);
+  });
+
+  // 修改输入事件处理
+  input.addEventListener('input', (e) => {
+    // 只在非输入法编辑状态下触发搜索
+    if (!isComposing) {
+      searchState.searchTerm = e.target.value;
+      performSearch(e.target.value);
+    }
   });
 
   prevBtn.addEventListener('click', () => {
