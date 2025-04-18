@@ -92,11 +92,23 @@ const initSearchUI = () => {
 
   // 清除高亮
   const clearHighlights = () => {
-    document.querySelectorAll('.better-search-highlight').forEach(el => {
-      const parent = el.parentNode;
-      parent.replaceChild(document.createTextNode(el.textContent), el);
-    });
-    // 清空匹配结果数组
+    // 从后向前处理所有高亮标记
+    const highlights = document.querySelectorAll('mark.better-search-highlight');
+    for (let i = highlights.length - 1; i >= 0; i--) {
+      const highlight = highlights[i];
+      const parent = highlight.parentNode;
+      if (parent) {
+        // 使用 highlight.firstChild 来获取原始文本节点
+        const textNode = highlight.firstChild;
+        if (textNode) {
+          parent.replaceChild(textNode, highlight);
+          // 合并文本节点
+          parent.normalize();
+        }
+      }
+    }
+    
+    // 清理搜索状态
     searchState.matches = [];
     searchState.currentIndex = 0;
     // 更新按钮状态
@@ -131,7 +143,30 @@ const initSearchUI = () => {
       const walker = document.createTreeWalker(
         document.body,
         NodeFilter.SHOW_TEXT,
-        null,
+        {
+          acceptNode: (node) => {
+            // 跳过不需要处理的节点
+            if (node.parentNode) {
+              const parentTag = node.parentNode.nodeName.toUpperCase();
+              if (parentTag === 'SCRIPT' || 
+                  parentTag === 'NOSCRIPT' || 
+                  parentTag === 'STYLE' ||
+                  parentTag === 'MARK' ||
+                  node.parentNode.nodeType === Node.COMMENT_NODE) {
+                return NodeFilter.FILTER_REJECT;
+              }
+              
+              // 跳过不可见的元素
+              const style = window.getComputedStyle(node.parentNode);
+              if (style.display === 'none' || style.visibility === 'hidden') {
+                return NodeFilter.FILTER_REJECT;
+              }
+            }
+            
+            // 只处理非空文本节点
+            return node.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+          }
+        },
         false
       );
 
@@ -170,20 +205,17 @@ const initSearchUI = () => {
       for (let i = allMatches.length - 1; i >= 0; i--) {
         const match = allMatches[i];
         try {
-          const span = document.createElement('span');
-          span.className = 'better-search-highlight';
-          span.textContent = match.text;
+          const mark = document.createElement('mark');
+          mark.className = 'better-search-highlight';
+          mark.textContent = match.text;
           
           const range = document.createRange();
           range.setStart(match.node, match.index);
           range.setEnd(match.node, match.index + match.length);
-          range.surroundContents(span);
+          range.surroundContents(mark);
           
-          // 将新创建的span添加到匹配数组的开头
-          // 这样保持匹配项的原始顺序
-          searchState.matches.unshift(span);
+          searchState.matches.unshift(mark);
         } catch (e) {
-          console.warn('无法高亮文本:', e);
           continue;
         }
       }

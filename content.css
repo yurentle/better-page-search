@@ -109,19 +109,15 @@
 }
 
 .better-search-highlight {
-  background-color: #fce8b2; /* 更柔和的黄色 */
-  padding: 0 2px;
-  border-radius: 2px;
+  -webkit-text-fill-color: initial;
 }
 
 .better-search-highlight.current {
   background-color: #fbbc04; /* Google 风格的黄色 */
-  font-weight: bold;
 }
 
 .search-controls button.disabled {
   opacity: 0.5;
-  /* cursor: not-allowed; */
   background: #f0f0f0;
 }
 
