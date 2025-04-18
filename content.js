@@ -156,10 +156,19 @@ const initSearchUI = () => {
                 return NodeFilter.FILTER_REJECT;
               }
               
-              // 跳过不可见的元素
-              const style = window.getComputedStyle(node.parentNode);
-              if (style.display === 'none' || style.visibility === 'hidden') {
+              // 跳过搜索组件中的文本
+              if (node.parentNode.closest('#better-search-container')) {
                 return NodeFilter.FILTER_REJECT;
+              }
+              
+              // 检查当前节点及其所有父节点是否可见
+              let parent = node.parentNode;
+              while (parent && parent !== document.body) {
+                const style = window.getComputedStyle(parent);
+                if (style.display === 'none' || style.visibility === 'hidden') {
+                  return NodeFilter.FILTER_REJECT;
+                }
+                parent = parent.parentNode;
               }
             }
             
